@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Screenshots Hanger · Drop check</title>
+<style>body{background:#15211d;color:#edf3ee;font:16px system-ui;max-width:800px;margin:70px auto;padding:24px}h1{font-weight:600}p{color:#aab8ae}#drop{padding:70px 30px;border:2px dashed #75ab8b;border-radius:20px;text-align:center;background:#202c28}#drop.over{background:#354c3e}img{max-width:100%;margin-top:24px;border-radius:12px}output{display:block;white-space:pre-wrap;margin-top:20px}</style>
+<h1>Give your screenshot a landing spot.</h1><p>Hover at the top of the screen. Drag a thumbnail from the rope into this box.</p><div id="drop">Drop a screenshot here<br><small>Local test only · Nothing is uploaded</small></div><output id="result"></output><img id="preview" alt="Dropped screenshot preview" hidden>
+<script>
+const drop=document.querySelector('#drop'), result=document.querySelector('#result'), preview=document.querySelector('#preview');let imageUrl;
+drop.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';drop.classList.add('over')});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const file=e.dataTransfer.files[0];if(!file){result.textContent='No file payload received.';return}result.textContent=`Received: ${file.name}\nType: ${file.type}\nSize: ${file.size.toLocaleString()} bytes`;if(imageUrl)URL.revokeObjectURL(imageUrl);if(file.type.startsWith('image/')){imageUrl=URL.createObjectURL(file);preview.src=imageUrl;preview.hidden=false}});
+</script></html>

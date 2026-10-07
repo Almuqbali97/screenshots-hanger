@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../../assets/hanger.ico</ApplicationIcon>
+    <AssemblyName>ScreenshotsHanger</AssemblyName>
+    <Version>1.0.1</Version>
+    <Description>A little clothesline for your screenshots.</Description>
+  </PropertyGroup>
+</Project>
