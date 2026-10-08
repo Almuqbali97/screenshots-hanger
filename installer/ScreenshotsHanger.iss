@@ -1,4 +1,4 @@
-#define AppVersion "1.0.1"
+#define AppVersion "1.0.2"
 [Setup]
 AppId={{7ED5E904-61A8-4AE1-9574-DF9787F6318B}
 AppName=Screenshots Hanger

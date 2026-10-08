@@ -20,7 +20,7 @@ internal static class SmokeTest
         int exit = 0;
         app.Startup += async (_, _) =>
         {
-            try { await Verify(output); File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: settings validation/persistence/recovery; PNG storage/reload; pixel deduplication; drag file payload; removal/reload/cleanup; history limit; native clipboard listener; actual file watcher capture/retry/pause; overlay (5/12/narrow) and settings rendering; glass toolbar on light/dark backgrounds; toolbar clear across pages, one notification, retained PNGs, restart persistence, disabled empty state.\n"); }
+            try { await Verify(output); File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: settings validation/persistence/recovery; reveal area defaults, legacy migration, all four choices, boundaries and monitor offsets; PNG storage/reload; pixel deduplication; drag file payload; removal/reload/cleanup; history limit; native clipboard listener; actual file watcher capture/retry/pause; overlay (5/12/narrow) and settings rendering; glass toolbar on light/dark backgrounds; toolbar clear across pages, one notification, retained PNGs, restart persistence, disabled empty state.\n"); }
             catch (Exception e) { exit = 1; File.WriteAllText(Path.Combine(output, "result.txt"), e.ToString()); }
             finally { app.Shutdown(exit); }
         };
@@ -35,6 +35,17 @@ internal static class SmokeTest
         settings.Save(config); settings = Settings.Load(config);
         Assert(settings.VisibleCount == 12 && settings.HoverDelayMs == 100, "Settings bounds failed");
         File.WriteAllText(config, "{not valid json"); Assert(Settings.Load(config).VisibleCount == 5, "Settings recovery failed");
+        File.WriteAllText(config, "{\"VisibleCount\":7,\"HoverDelayMs\":500}");
+        var legacy = Settings.Load(config);
+        Assert(legacy.RevealArea == HoverRevealArea.TopMiddle && legacy.VisibleCount == 7 && legacy.HoverDelayMs == 500, "Legacy settings didn't adopt top-middle while retaining preferences");
+        foreach (var choice in Enum.GetValues<HoverRevealArea>())
+        {
+            legacy.RevealArea = choice; legacy.Save(config);
+            Assert(Settings.Load(config).RevealArea == choice, "Reveal area wasn't persisted: " + choice);
+        }
+        legacy.RevealArea = (HoverRevealArea)99; legacy.Validate();
+        Assert(legacy.RevealArea == HoverRevealArea.TopMiddle, "Invalid reveal area didn't fall back to top-middle");
+        VerifyRevealRegions();
         settings.VisibleCount = 5; settings.CaptureClipboard = false; settings.WatchScreenshotFolder = false;
         var store = new ScreenshotStore(Path.Combine(run, "Images"));
         var sample = Sample(0); var first = store.Add(sample)!;
@@ -87,6 +98,11 @@ internal static class SmokeTest
         settings.VisibleCount = 5;
         var preferences = new SettingsWindow(settings, gallery, () => { }, () => { }, capture.HotkeyRegistered);
         preferences.Show(); await Task.Delay(150);
+        var areaSelector = FindElement<ComboBox>(preferences, "RevealAreaSelector")!;
+        Assert(areaSelector.Items.Count == 4 && areaSelector.SelectedIndex == 0, "Settings must expose four reveal areas and select top-middle by default");
+        areaSelector.SelectedIndex = 2;
+        Assert(settings.RevealArea == HoverRevealArea.TopMiddle, "Changing an unsaved reveal choice mutated settings");
+        areaSelector.SelectedIndex = 0;
         Render(preferences, Path.Combine(output, "settings.png")); preferences.Close();
         var empty = new HangerWindow(gallery, settings, () => { }, () => { });
         empty.Reveal(); await Task.Delay(350);
@@ -100,6 +116,38 @@ internal static class SmokeTest
         Assert(new ScreenshotStore(gallery.DirectoryPath).Shots.Count == 0, "Cleared screenshots reappeared on restart");
         Assert(FindElement<Button>(empty, "ClearHangerButton")?.IsEnabled == false, "Clear wasn't disabled on an empty hanger");
         Render(empty, Path.Combine(output, "empty.png")); empty.Close();
+    }
+    private static void VerifyRevealRegions()
+    {
+        var primary = new System.Drawing.Rectangle(0, 0, 2000, 1200);
+        var points = new[] { 0, 199, 200, 499, 500, 1000, 1499, 1500, 1799, 1800, 1999 };
+        var expected = new[] {
+            new[] { false, false, false, false, true, true, true, false, false, false, false },
+            new[] { true, true, false, false, false, false, false, false, false, false, false },
+            new[] { false, false, false, false, false, false, false, false, false, true, true },
+            new[] { true, true, true, true, true, true, true, true, true, true, true }
+        };
+        foreach (var choice in Enum.GetValues<HoverRevealArea>())
+        {
+            for (int i = 0; i < points.Length; i++)
+                Assert(HoverRegion.Contains(choice, primary, points[i], 0) == expected[(int)choice][i], $"Wrong {choice} boundary at {points[i]}");
+            foreach (var outside in new[] { (-1, 0), (2000, 0), (1000, -1), (1000, 3), (0, 1200) })
+                Assert(!HoverRegion.Contains(choice, primary, outside.Item1, outside.Item2), "Activated outside monitor top edge");
+        }
+        foreach (var monitor in new[] {
+            new System.Drawing.Rectangle(-3840, -2160, 3840, 2160),
+            new System.Drawing.Rectangle(2000, 0, 2560, 1440),
+            new System.Drawing.Rectangle(0, 1200, 1080, 1920)
+        })
+        {
+            Assert(HoverRegion.Contains(HoverRevealArea.TopMiddle, monitor, monitor.Left + monitor.Width / 2, monitor.Top + 2), "Middle failed with monitor offset/DPI-sized bounds");
+            Assert(!HoverRegion.Contains(HoverRevealArea.TopMiddle, monitor, monitor.Left, monitor.Top), "Middle activated the left corner");
+            Assert(!HoverRegion.Contains(HoverRevealArea.TopMiddle, monitor, monitor.Right - 1, monitor.Top), "Middle activated the right corner");
+            Assert(HoverRegion.Contains(HoverRevealArea.TopLeftCorner, monitor, monitor.Left, monitor.Top), "Left corner failed with monitor offset");
+            Assert(HoverRegion.Contains(HoverRevealArea.TopRightCorner, monitor, monitor.Right - 1, monitor.Top), "Right corner failed with monitor offset");
+            Assert(!HoverRegion.Contains(HoverRevealArea.TopLeftCorner, monitor, monitor.Left + monitor.Width / 2, monitor.Top), "Left corner activated the middle");
+            Assert(!HoverRegion.Contains(HoverRevealArea.TopRightCorner, monitor, monitor.Left + monitor.Width / 2, monitor.Top), "Right corner activated the middle");
+        }
     }
     private static T? FindElement<T>(DependencyObject parent, string name) where T : FrameworkElement
     {

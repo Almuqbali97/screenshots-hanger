@@ -6,7 +6,7 @@ if (-not $installDir.StartsWith($artifacts + [System.IO.Path]::DirectorySeparato
 $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{7ED5E904-61A8-4AE1-9574-DF9787F6318B}_is1'
 if (Test-Path $uninstallKey) { throw 'An existing app installation is registered. Skipping to protect it.' }
 if (Test-Path $installDir) { throw 'Installer test destination already exists. Inspect it before another test.' }
-$setup = Join-Path $artifacts 'ScreenshotsHanger-Setup-1.0.1-x64.exe'
+$setup = Join-Path $artifacts 'ScreenshotsHanger-Setup-1.0.2-x64.exe'
 $uninstaller = Join-Path $installDir 'unins000.exe'
 try {
     $process = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/NOICONS','/TASKS=""',('/DIR="' + $installDir + '"'),('/LOG="' + $artifacts + '\install-check.log"')) -WindowStyle Hidden -PassThru -Wait

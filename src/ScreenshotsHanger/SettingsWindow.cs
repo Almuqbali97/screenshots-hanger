@@ -23,7 +23,7 @@ internal sealed class SettingsWindow : Window
 
         var how = new StackPanel();
         how.Children.Add(Ui.Text("Your next screenshot has a place to land.", 15, Ui.Ink, FontWeights.SemiBold));
-        AddParagraph(how, "01   Take a screenshot with Win + Shift + S.\n02   Move your mouse to the top edge to reveal the rope.\n03   Drag a thumbnail into a chat, folder, or file upload box.");
+        AddParagraph(how, "01   Take a screenshot with Win + Shift + S.\n02   Hover at your chosen area along the top edge.\n03   Drag a thumbnail into a chat, folder, or file upload box.");
         var snipButton = Ui.Button("Try a snip  ↗", () => { Close(); snip(); }, true); snipButton.HorizontalAlignment = HorizontalAlignment.Left; how.Children.Add(snipButton);
         root.Children.Add(Card(how));
 
@@ -33,6 +33,26 @@ internal sealed class SettingsWindow : Window
         slider.ValueChanged += (_, _) => value.Text = $"{(int)slider.Value} screenshot{(slider.Value == 1 ? "" : "s")} on the rope";
         display.Children.Add(slider);
         AddParagraph(display, "Older screenshots stay available with the arrows or mouse wheel.");
+        var areaLabel = Ui.Text("Reveal the hanger when hovering", 13, Ui.Ink, FontWeights.SemiBold);
+        areaLabel.Margin = new Thickness(0, 12, 0, 8); display.Children.Add(areaLabel);
+        var area = new ComboBox
+        {
+            Name = "RevealAreaSelector", MinHeight = 32, Padding = new Thickness(8, 5, 8, 5),
+            ItemsSource = new[] { "Top middle (default)", "Top-left corner", "Top-right corner", "Anywhere at the top" },
+            SelectedIndex = (int)settings.RevealArea
+        };
+        System.Windows.Automation.AutomationProperties.SetName(area, "Hanger reveal area");
+        var areaHint = Ui.Text("", 12, Ui.Muted); areaHint.TextWrapping = TextWrapping.Wrap; areaHint.LineHeight = 19;
+        areaHint.Margin = new Thickness(0, 7, 0, 10);
+        var descriptions = new[] {
+            "The middle half of the top edge. Both corners stay free for app controls.",
+            "The leftmost 10% of the top edge on each monitor.",
+            "The rightmost 10% of the top edge on each monitor.",
+            "The entire top edge, including both corners."
+        };
+        areaHint.Text = descriptions[area.SelectedIndex];
+        area.SelectionChanged += (_, _) => { if (area.SelectedIndex >= 0) areaHint.Text = descriptions[area.SelectedIndex]; };
+        display.Children.Add(area); display.Children.Add(areaHint);
         var delayRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
         var delayLabel = Ui.Text("Top-edge reveal delay", 13, Ui.Muted); delayRow.Children.Add(delayLabel);
         var delay = new ComboBox { Width = 125, HorizontalAlignment = HorizontalAlignment.Right, ItemsSource = new[] { "Quick · 100 ms", "Normal · 220 ms", "Relaxed · 500 ms" }, SelectedIndex = settings.HoverDelayMs <= 100 ? 0 : settings.HoverDelayMs >= 500 ? 2 : 1 };
@@ -74,6 +94,7 @@ internal sealed class SettingsWindow : Window
             {
                 StartupRegistration.Set(startup.IsChecked == true);
                 settings.VisibleCount = (int)slider.Value; settings.HoverDelayMs = new[] { 100, 220, 500 }[delay.SelectedIndex];
+                settings.RevealArea = (HoverRevealArea)area.SelectedIndex;
                 settings.CaptureClipboard = clipboard.IsChecked == true; settings.WatchScreenshotFolder = folder.IsChecked == true; settings.RevealOnCapture = reveal.IsChecked == true;
                 save(); Close();
             }

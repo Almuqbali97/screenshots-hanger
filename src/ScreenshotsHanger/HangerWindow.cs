@@ -24,6 +24,7 @@ internal sealed class HangerWindow : Window
     private readonly TranslateTransform slide = new();
     private readonly DispatcherTimer timer;
     private DateTime edgeSince = DateTime.MinValue, awaySince = DateTime.MinValue, keepUntil;
+    private string? edgeMonitor;
     private bool hiding, dragging, edgeArmed = true;
     private int menusOpen, page;
     private Forms.Screen? screen;
@@ -46,7 +47,7 @@ internal sealed class HangerWindow : Window
     private void StoreChanged() { page = Math.Clamp(page, 0, MaxPage); Render(); }
     private int MaxPage => Math.Max(0, (store.Shots.Count - 1) / settings.VisibleCount);
     private void ChangePage(int delta) { page = Math.Clamp(page + delta, 0, MaxPage); Render(); keepUntil = DateTime.UtcNow.AddSeconds(1); }
-    public void Refresh() { page = 0; Render(); }
+    public void Refresh() { page = 0; edgeSince = DateTime.MinValue; edgeMonitor = null; edgeArmed = true; Render(); }
     public void Reveal(bool newest = false)
     {
         if (newest) page = 0;
@@ -84,13 +85,17 @@ internal sealed class HangerWindow : Window
     {
         if (!Native.GetCursorPos(out var point)) return;
         var active = Forms.Screen.FromPoint(new System.Drawing.Point(point.X, point.Y));
-        bool atEdge = point.Y >= active.Bounds.Top && point.Y <= active.Bounds.Top + 2;
-        if (!atEdge) { edgeArmed = true; edgeSince = DateTime.MinValue; }
+        bool atEdge = HoverRegion.Contains(settings.RevealArea, active.Bounds, point.X, point.Y);
+        if (!atEdge) { edgeArmed = true; edgeSince = DateTime.MinValue; edgeMonitor = null; }
         if (!IsVisible)
         {
             if (atEdge && edgeArmed)
             {
-                if (edgeSince == DateTime.MinValue) edgeSince = DateTime.UtcNow;
+                if (edgeSince == DateTime.MinValue || edgeMonitor != active.DeviceName)
+                {
+                    edgeSince = DateTime.UtcNow;
+                    edgeMonitor = active.DeviceName;
+                }
                 if ((DateTime.UtcNow - edgeSince).TotalMilliseconds >= settings.HoverDelayMs) Reveal();
             }
             return;

@@ -5,6 +5,14 @@ using Microsoft.Win32;
 
 namespace ScreenshotsHanger;
 
+public enum HoverRevealArea
+{
+    TopMiddle = 0,
+    TopLeftCorner = 1,
+    TopRightCorner = 2,
+    EntireTopEdge = 3
+}
+
 public sealed class Settings
 {
     public int VisibleCount { get; set; } = 5;
@@ -12,11 +20,13 @@ public sealed class Settings
     public bool WatchScreenshotFolder { get; set; } = true;
     public bool RevealOnCapture { get; set; } = true;
     public int HoverDelayMs { get; set; } = 220;
+    public HoverRevealArea RevealArea { get; set; } = HoverRevealArea.TopMiddle;
     public bool WelcomeSeen { get; set; }
     public void Validate()
     {
         VisibleCount = Math.Clamp(VisibleCount, 1, 12);
         HoverDelayMs = Math.Clamp(HoverDelayMs, 100, 1000);
+        if (!Enum.IsDefined(RevealArea)) RevealArea = HoverRevealArea.TopMiddle;
     }
     public static Settings Load(string path)
     {
